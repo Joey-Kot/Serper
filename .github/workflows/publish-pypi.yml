@@ -8,7 +8,6 @@ on:
       - "tests/**"
       - "scripts/**"
       - "pyproject.toml"
-      - ".github/workflows/publish-pypi.yml"
   workflow_dispatch:
     inputs:
       confirm:
