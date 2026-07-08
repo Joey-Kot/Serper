@@ -337,6 +337,12 @@ func runScrape(args []string, stdout io.Writer, stderr io.Writer) error {
 		fmt.Fprintln(stdout, err.Error())
 		return cliError{code: 1}
 	}
+	path := outputPath(output, outputDir)
+	if err := ensureOutputFileAvailable(path); err != nil {
+		fmt.Fprintln(stdout, "false")
+		fmt.Fprintln(stdout, err.Error())
+		return cliError{code: 1}
+	}
 
 	payload := map[string]any{"url": targetURL}
 	if includeMarkdown {
@@ -349,8 +355,7 @@ func runScrape(args []string, stdout io.Writer, stderr io.Writer) error {
 		return cliError{code: 1}
 	}
 	result := transformScrapeResult(raw, targetURL)
-	path := outputPath(output, outputDir)
-	if err := os.WriteFile(path, []byte(renderMarkdownFile(result)), 0o644); err != nil {
+	if err := writeNewFile(path, []byte(renderMarkdownFile(result))); err != nil {
 		fmt.Fprintln(stdout, "false")
 		fmt.Fprintln(stdout, err.Error())
 		return cliError{code: 1}
@@ -934,6 +939,33 @@ func outputPath(output string, outputDir string) string {
 		dir = "."
 	}
 	return filepath.Join(dir, name)
+}
+
+func ensureOutputFileAvailable(path string) error {
+	if _, err := os.Lstat(path); err == nil {
+		return fmt.Errorf("output file already exists: %s", path)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func writeNewFile(path string, data []byte) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("output file already exists: %s", path)
+		}
+		return err
+	}
+	writeErr := error(nil)
+	if _, err := file.Write(data); err != nil {
+		writeErr = err
+	}
+	if err := file.Close(); err != nil && writeErr == nil {
+		writeErr = err
+	}
+	return writeErr
 }
 
 func loadCountryAliases() map[string]string {

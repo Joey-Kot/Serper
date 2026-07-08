@@ -3,7 +3,18 @@ name: Publish to PyPI
 on:
   push:
     branches: [main]
+    paths:
+      - "serper_toolkit/**"
+      - "tests/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - ".github/workflows/publish-pypi.yml"
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type publish to confirm"
+        required: true
+        default: "publish"
 
 permissions:
   contents: read
@@ -18,6 +29,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Confirm release intent
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "publish" ]; then
+            echo "::error::Input confirm must be exactly publish."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 

@@ -257,14 +257,13 @@ func TestScrapeCommandFailsBeforeRequestWhenOutputPathCannotBeCreated(t *testing
 	}
 }
 
-func TestScrapeFailureDoesNotOverwriteExistingFile(t *testing.T) {
+func TestScrapeCommandFailsBeforeRequestWhenOutputFileExists(t *testing.T) {
 	t.Setenv(apiKeyEnv, "test-key")
+	requested := false
 	setMockHTTPClient(t, func(r *http.Request) (*http.Response, error) {
-		return jsonResponse(500, `{"message":"upstream failed"}`), nil
+		requested = true
+		return jsonResponse(200, `{"markdown":"new"}`), nil
 	})
-	old := endpoints["scrape"]
-	endpoints["scrape"] = "https://example.test/scrape"
-	t.Cleanup(func() { endpoints["scrape"] = old })
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "page.md")
@@ -283,10 +282,16 @@ func TestScrapeFailureDoesNotOverwriteExistingFile(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	err = run([]string{"scrape", "--output", "page", "--url", "https://example.com"}, &stdout, &stderr)
 	if err == nil {
-		t.Fatal("expected scrape failure")
+		t.Fatal("expected existing output file failure")
 	}
-	if !strings.Contains(stdout.String(), "false") {
-		t.Fatalf("stdout = %q", stdout.String())
+	if requested {
+		t.Fatal("scrape request was made before output file availability was checked")
+	}
+	out := stdout.String()
+	for _, want := range []string{"false", "output file already exists"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q:\n%s", want, out)
+		}
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -294,6 +299,51 @@ func TestScrapeFailureDoesNotOverwriteExistingFile(t *testing.T) {
 	}
 	if string(content) != "original" {
 		t.Fatalf("file was overwritten: %q", string(content))
+	}
+}
+
+func TestScrapeCommandRejectsExistingOutputSymlinkBeforeRequest(t *testing.T) {
+	t.Setenv(apiKeyEnv, "test-key")
+	requested := false
+	setMockHTTPClient(t, func(r *http.Request) (*http.Response, error) {
+		requested = true
+		return jsonResponse(200, `{"markdown":"new"}`), nil
+	})
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.md")
+	if err := os.WriteFile(target, []byte("target"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(dir, "page.md")); err != nil {
+		t.Fatal(err)
+	}
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldWD) })
+
+	var stdout, stderr bytes.Buffer
+	err = run([]string{"scrape", "--output", "page", "--url", "https://example.com"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected existing output symlink failure")
+	}
+	if requested {
+		t.Fatal("scrape request was made before output symlink was rejected")
+	}
+	if !strings.Contains(stdout.String(), "output file already exists") {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+	content, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "target" {
+		t.Fatalf("symlink target was overwritten: %q", string(content))
 	}
 }
 
