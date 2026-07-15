@@ -1,0 +1,16 @@
+# Third-Party Notices
+
+The standalone Go CLI statically links the component below. Python runtime
+dependencies are declared in `pyproject.toml` and are not bundled into the
+CLI release archives.
+
+## golang.org/x/text
+
+- Version: v0.22.0
+- Source: https://pkg.go.dev/golang.org/x/text
+- License: BSD-3-Clause
+- Full license text: `THIRD_PARTY_LICENSES/golang.org-x-text-BSD-3-Clause.txt`
+
+## Project License
+
+- GPL-3.0-or-later

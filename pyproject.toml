@@ -26,6 +26,9 @@ serper-toolkit = "serper_toolkit.__main__:main"
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.txt", "THIRD_PARTY_LICENSES/*"]
+
 [tool.setuptools.package-data]
 serper_toolkit = ["data/*.json"]
 

@@ -275,4 +275,7 @@ python3 -m twine check dist/*
 
 ## License
 
-GNU General Public License v3.0 or later (GPL-3.0-or-later).
+GNU General Public License v3.0 or later (GPL-3.0-or-later). See
+[LICENSE](LICENSE) for details. Third-party dependency notices and complete
+license texts are available in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)
+and [`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/).
