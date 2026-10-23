@@ -104,6 +104,8 @@ export SERPER_KEY="<your-serper-api-key>"
 
 ### Build From Source
 
+Requires Go 1.27.3 or later. CI reads the Go version from `cli/go.mod`.
+
 Build for the current platform:
 
 ```bash

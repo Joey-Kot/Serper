@@ -12,18 +12,26 @@ authors = [
 
 dependencies = [
     "httpx>=0.28.1",
-    "h2>=4.3.0",
+    "h2>=4.4.1",
     "idna>=3.15",
     "dotenv>=0.9.9",
     "python-dotenv>=1.2.2",
-    "fastmcp>=2.14.4"
+    "fastmcp>=3.4.2,<4",
+    # Security floors for transitive dependencies also apply to pip/uvx installs.
+    "anyio>=4.14.2",
+    "certifi>=2026.10.19",
+    "cryptography>=50.0.2",
+    "hpack>=4.2.0",
+    "mcp>=1.30.0,<2",
+    "opentelemetry-api>=1.45.1",
+    "pyjwt>=2.15.1"
 ]
 
 [project.scripts]
 serper-toolkit = "serper_toolkit.__main__:main"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
