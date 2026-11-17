@@ -1,283 +1,151 @@
-# Serper MCP Toolkit
+# Serper
 
-A rebuilt Serper MCP server based on the `firecrawl-toolkit` architecture.
+English | [简体中文](README_ZH.md)
 
-## Highlights
+Serper is a Rust command-line client for the Serper API. It searches the web, images, videos, places, reviews, news, scholarly publications, shopping results, and patents; searches by image; scrapes pages into Markdown files; and shows the account's remaining credits and QPS.
 
-- Unified async request layer (`httpx` + connection pooling + retries)
-- Compact JSON responses (single-line) for lower token usage
-- Stable mapped response schemas (no upstream raw passthrough)
-- Multi-page aggregation for non-image search endpoints (10 results/page granularity)
-- Image search `search_num` normalization to `10` or `100`
-- Multi-transport startup (`STDIO` / `HTTP` / `SSE`, mutually exclusive)
-- Process lock to prevent duplicate server instances
+## Downloads
 
-## Tools
+| Platform | Download | SHA-256 |
+| --- | --- | --- |
+| Linux x86_64 | [linux-amd64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_linux_amd64.tar.gz) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_linux_amd64.tar.gz.sha256) |
+| Linux arm64 | [linux-arm64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_linux_arm64.tar.gz) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_linux_arm64.tar.gz.sha256) |
+| Windows x86_64 | [windows-amd64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_windows_amd64.zip) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_windows_amd64.zip.sha256) |
+| Windows arm64 | [windows-arm64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_windows_arm64.zip) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_windows_arm64.zip.sha256) |
+| macOS x86_64 | [darwin-amd64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_darwin_amd64.tar.gz) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_darwin_amd64.tar.gz.sha256) |
+| macOS arm64 | [darwin-arm64](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_darwin_arm64.tar.gz) | [sha256](https://github.com/Joey-Kot/Serper/releases/download/Latest/serper_darwin_arm64.tar.gz.sha256) |
 
-- `serper-aggregated-search`
-- `serper-general-search`
-- `serper-image-search`
-- `serper-video-search`
-- `serper-place-search`
-- `serper-maps-search`
-- `serper-reviews-search`
-- `serper-news-search`
-- `serper-lens-search`
-- `serper-scholar-search`
-- `serper-shopping-search`
-- `serper-patents-search`
-- `serper-scrape`
+## Usage
 
-## Core Parameter Rules
+### API key
 
-- Search tools do **not** expose `page`; internal pagination is automatic.
-- Non-image endpoints:
-  - `search_num` is clamped to `1..100`
-  - then rounded **up** to nearest multiple of 10 (`25 -> 30`)
-- Image endpoint:
-  - `1..10 -> 10`, `11..100 -> 100`
-- Maps endpoint:
-  - when aggregation requires page > 1 and query mode is used, `ll` is required.
-
-## Environment Variables
-
-### API and network
-
-- `SERPER_API_KEY`
-- `SERPER_HTTP2` (0/1)
-- `SERPER_MAX_CONNECTIONS`
-- `SERPER_KEEPALIVE`
-- `SERPER_MAX_CONCURRENT_REQUESTS`
-- `SERPER_MAX_WORKERS`
-- `SERPER_RETRY_COUNT`
-- `SERPER_RETRY_BASE_DELAY`
-- `SERPER_ENDPOINT_CONCURRENCY` (JSON, e.g. `{"search":10,"scrape":2}`)
-- `SERPER_ENDPOINT_RETRYABLE` (JSON, e.g. `{"scrape":false}`)
-
-### Transport selection (exactly one must be enabled)
-
-- `SERPER_MCP_ENABLE_STDIO`
-- `SERPER_MCP_ENABLE_HTTP`
-- `SERPER_MCP_ENABLE_SSE`
-
-### Transport host/port
-
-- `SERPER_MCP_HTTP_HOST`
-- `SERPER_MCP_HTTP_PORT`
-- `SERPER_MCP_SSE_HOST`
-- `SERPER_MCP_SSE_PORT`
-- `SERPER_MCP_HOST` (fallback)
-- `SERPER_MCP_PORT` (fallback)
-
-### Lock file
-
-- `SERPER_MCP_LOCK_FILE` (default `/tmp/serper_mcp.lock` on Unix)
-
-## MCP Client Example
-
-Use `uvx` to run the Python MCP server. `uvx` creates an isolated environment and installs package dependencies automatically:
-
-```json
-{
-  "mcpServers": {
-    "serper-toolkit": {
-      "command": "uvx",
-      "args": ["serper-toolkit"],
-      "env": {
-        "SERPER_API_KEY": "<your-serper-api-key>",
-        "SERPER_MCP_ENABLE_STDIO": "1"
-      }
-    }
-  }
-}
-```
-
-## Go CLI
-
-The Go CLI is located in the `cli` directory. It is a standalone command-line client named `serper`, separate from the Python MCP server.
-
-The CLI reads the API key only from `SERPER_KEY`:
+Extract the archive and place `serper` on your `PATH`, or run it from the extracted directory. On Windows, the executable is `serper.exe`. Set `SERPER_KEY` to your Serper API key before making requests.
 
 ```bash
 export SERPER_KEY="<your-serper-api-key>"
+serper --help
 ```
 
-### Build From Source
+In PowerShell, use `$env:SERPER_KEY = "<your-serper-api-key>"`.
 
-Requires Go 1.27.3 or later. CI reads the Go version from `cli/go.mod`.
-
-Build for the current platform:
+### Credits and rate limit
 
 ```bash
-cd cli
-go test ./...
-go build -o serper .
+serper credit
 ```
 
-Run it directly after building:
-
-```bash
-./serper --help
+```text
+Timestamp      : 2026-11-17 10:00:00
+Serper Credits : 1652
+Serper QPS     : 5
 ```
 
-Build all release targets locally:
+The command reads `balance` and `rateLimit` from the account endpoint. The timestamp is the local system time when the response has been received. Errors go to stderr and return a nonzero exit status. Use `--timeout` to set the request timeout in seconds.
+
+### Search
 
 ```bash
-cd cli
-mkdir -p dist
-
-for target in windows/amd64 windows/arm64 linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-  GOOS=${target%/*}
-  GOARCH=${target#*/}
-  binary=serper
-  package="serper_${GOOS}_${GOARCH}.tar.gz"
-
-  if [ "$GOOS" = windows ]; then
-    binary=serper.exe
-    package="serper_${GOOS}_${GOARCH}.zip"
-  fi
-
-  build_dir="build/${GOOS}_${GOARCH}"
-  mkdir -p "$build_dir"
-  CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -trimpath -ldflags="-s -w" -o "$build_dir/$binary" .
-
-  if [ "$GOOS" = windows ]; then
-    (cd "$build_dir" && zip -q "../../dist/$package" "$binary")
-  else
-    tar -C "$build_dir" -czf "dist/$package" "$binary"
-  fi
-
-  (cd dist && sha256sum "$package" > "$package.sha256")
-done
-
-(cd dist && find . -maxdepth 1 -type f ! -name '*.sha256' ! -name 'SHA256SUMS' -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS)
-```
-
-### CLI Commands
-
-The CLI exposes the same 13 tool surfaces as subcommands:
-
-```bash
-serper aggregated --query "AI news" --search-num 20 --country US --language en --search-time day --timeout 120
-serper general --query "AI news" --search-num 10 --country US --language en --search-time week
+serper aggregated --query "AI news" --search-num 20 --country US --language en --search-time day
+serper general --query "AI news" --search-num 10 --search-time week
 serper image --query "serper logo" --search-num 10
-serper video --query "web scraping tutorial" --search-num 10
+serper video --query "web scraping tutorial"
 serper place --query "coffee" --location "Berlin,Germany"
 serper maps --query "coffee" --ll "@52.5200,13.4050,14z" --search-num 20
-serper reviews --cid "<google-cid>" --search-num 10 --sort-by newest
+serper reviews --cid "<google-cid>" --sort-by newest
 serper news --query "OpenAI" --search-time day
 serper lens --image-url "https://example.com/image.jpg"
 serper scholar --query "large language models"
 serper shopping --query "mechanical keyboard"
 serper patents --query "battery management"
+```
+
+Search commands print compact, single-line JSON. Successful responses contain `success`, `meta`, `data`, and `credits`; request failures print a JSON error on stdout and return a nonzero status. `aggregated` combines web, news, and image results.
+
+`--search-num` accepts `1`–`100`. It defaults to `20` for `aggregated` and `10` for other search commands. Non-image searches round up to the next multiple of 10 and fetch pages automatically; image searches request either 10 or 100 results in one request. Results are deduplicated as pages are merged. For maps queries fetching more than one page, provide `--ll`.
+
+### Scrape pages
+
+```bash
 serper scrape --output example --url "https://www.example.com"
+serper scrape --output example --path ./exports --url "https://www.example.com" --timeout 120
 ```
 
-Search-style commands output compact single-line JSON with the Python toolkit schema:
-
-```json
-{"success":true,"meta":{"requested_search_num":10,"effective_search_num":10,"pages_fetched":1,"result_count":1,"credits":1},"data":{"organic":[]},"credits":1}
-```
-
-### CLI Search Parameters
-
-Shared search parameters:
-
-- `--query` (required for `aggregated`, `general`, `image`, `video`, `place`, `maps`, `news`, `scholar`, `shopping`, `patents`): Search keywords.
-- `--search-num` (optional): Number of results, range `1`-`100`. Defaults to `20` for `aggregated`, and `10` for other search subcommands.
-- `--country` (optional): Country name or ISO code. Default is `US` where the Serper endpoint supports country targeting.
-- `--language` (optional): Language code, such as `en`.
-- `--search-time` (optional): One of `hour`, `day`, `week`, `month`, `year`. Supported by `aggregated`, `general`, `image`, `video`, and `news`.
-- `--timeout` (optional): Request timeout in seconds. Must be `> 0`. Default is `120`.
-
-Subcommand-specific parameters:
-
-- `place`: `--location` is optional.
-- `maps`: `--ll`, `--place-id`, and `--cid` are optional. When query-mode maps aggregation fetches more than one page, `--ll` is required.
-- `reviews`: at least one of `--fid`, `--cid`, or `--place-id` is required. `--sort-by` is optional.
-- `lens`: `--image-url` is required.
-
-Normalization follows the Python toolkit:
-
-- Non-image endpoints clamp `--search-num` to `1`-`100`, then round up to the nearest multiple of `10`.
-- Image search uses `10` for requests `1`-`10`, and `100` for requests `11`-`100`.
-- Search tools do not expose a `page` parameter; pagination is automatic.
-
-### CLI Scrape Usage
-
-Scrape a page and save the markdown export as `example.md` in the current directory:
-
-```bash
-serper scrape --output example --url "https://www.example.com" --timeout 120
-```
-
-Save the markdown export to a specific directory:
-
-```bash
-serper scrape --output example --path ./exports --url "https://www.example.com"
-```
-
-Scrape command parameters:
-
-- `--output` (required): Export name. The CLI writes `<output>.md`.
-- `--path` (optional): Directory where the markdown export is saved. Supports absolute and relative paths. Defaults to the current directory. If the directory does not exist, the CLI tries to create it before scraping.
-- `--url` (required): Target URL to scrape.
-- `--include-markdown` (optional): Request markdown content. Default is `true`.
-- `--timeout` (optional): Request timeout in seconds. Must be `> 0`. Default is `120`.
-
-Scrape output:
-
-- On success, stdout is `true`, and the CLI writes `<output>.md`.
-- On failure, stdout is `false` followed by the error reason, and no file is created or overwritten.
-
-The generated markdown file uses this structure:
+The command creates the output directory if needed and writes `<output>.md` after a successful request. It prints `true` on success. On failure it prints `false` followed by the reason and exits with a nonzero status. Existing files and symlinks are not overwritten. Markdown is requested by default; set `--include-markdown=false` to disable it.
 
 ```markdown
-## title:
-## description:
-## url:
-## credits:
+## title: ...
+## description: ...
+## url: ...
+## credits: ...
 
 ---
 
-markdown content
+page content
 ```
 
-## CI/CD
+### Command and option reference
 
-Two GitHub Actions workflows are included:
+| Command | Purpose |
+| --- | --- |
+| `aggregated` | Search the web, news, and images together. |
+| `general`, `image`, `video`, `news` | Search one result type. |
+| `place`, `maps`, `reviews` | Search places, maps, or reviews. |
+| `lens` | Search using a public image URL. |
+| `scholar`, `shopping`, `patents` | Search scholarly publications, shopping results, or patents. |
+| `scrape` | Save a page as Markdown. |
+| `credit` | Show remaining credits and the account QPS. |
 
-- `CI` (`.github/workflows/ci.yml`)
-  - Trigger: push/PR on `main` and `dev`, plus manual `workflow_dispatch`
-  - Python matrix: `3.12`, `3.13`
-  - Steps: alias validation, unit tests, build, twine check
-  - Go CLI: tests, six-platform builds, and upload to the `Latest` GitHub Release on push/manual runs
+| Option | Applies to | Usage |
+| --- | --- | --- |
+| `--query TEXT` | Search commands except `reviews` and `lens` | Search keywords; required for these commands. |
+| `--search-num N` | Search commands | Results requested, from `1` to `100`; subject to the normalization above. |
+| `--country COUNTRY` | Search commands except `patents` | Country name or ISO code; defaults to `US`. Unrecognized names fall back to `US`. |
+| `--language CODE` | Search commands except `patents` | Language code, such as `en`. |
+| `--search-time TIME` | `aggregated`, `general`, `image`, `video`, `news` | `hour`, `day`, `week`, `month`, or `year`. |
+| `--location LOCATION` | `place` | Location hint. |
+| `--ll COORDINATES` | `maps` | Map coordinates; required for multi-page query results. |
+| `--place-id ID` | `maps`, `reviews` | Google place ID. |
+| `--cid CID` | `maps`, `reviews` | Google CID. |
+| `--fid FID` | `reviews` | Google FID. |
+| `--sort-by ORDER` | `reviews` | Review sort option, such as `newest`. |
+| `--image-url URL` | `lens` | Public image URL; required. |
+| `--output NAME` | `scrape` | Output file name; required. The `.md` extension is added if absent. |
+| `--path DIR` | `scrape` | Output directory; defaults to the current directory. |
+| `--url URL` | `scrape` | Page URL; required. |
+| `--include-markdown[=true\|false]` | `scrape` | Request Markdown; defaults to `true`. |
+| `--timeout SECONDS` | All commands | Timeout per request; a positive integer, default `120`. |
+| `--help` | All commands | Show help for a command. |
 
-- `Publish to PyPI` (`.github/workflows/publish-pypi.yml`)
-  - Trigger: push on `main` (automatic), plus manual `workflow_dispatch`
-  - Preflight: alias validation, tests, build, twine check, version-not-on-PyPI check
-  - Publish: trusted publishing via OIDC to PyPI
+`reviews` requires at least one of `--fid`, `--cid`, or `--place-id`. Use `serper <command> --help` to see the options for an individual command. Values can be passed as `--option VALUE` or `--option=VALUE`.
 
-### Required repository settings
+## Build from source
 
-1. Create GitHub Environment: `pypi`
-2. Configure PyPI Trusted Publisher for this repo/workflow/branch:
-   - Workflow file: `.github/workflows/publish-pypi.yml`
-   - Branch: `main`
-3. Ensure Actions permissions allow OIDC (`id-token: write` in workflow is already set)
-
-## Development Validation
+Use Rust 1.99.1 and a C toolchain for the target platform. Rustup selects the version from [rust-toolchain.toml](rust-toolchain.toml).
 
 ```bash
-python3 scripts/validate_country_aliases.py
-python3 -m unittest discover -s tests -p "test_*.py"
-python3 -m build
-python3 -m twine check dist/*
+git clone https://github.com/Joey-Kot/Serper.git
+cd Serper
+rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+cargo build --release --locked
+```
+
+The executable is `target/release/serper` (`serper.exe` on Windows). For a statically linked Linux x86_64 executable, install `musl-gcc` (the `musl-tools` package on Ubuntu) and use:
+
+```bash
+rustup target add --toolchain 1.99.1 x86_64-unknown-linux-musl
+cargo build --release --locked --target x86_64-unknown-linux-musl
+```
+
+The executable is `target/x86_64-unknown-linux-musl/release/serper`. On Linux arm64, use `aarch64-unknown-linux-musl` instead. To install the Linux static build on your Cargo binary path, run `cargo install --path . --locked --target x86_64-unknown-linux-musl` with the appropriate target.
+
+Run the project checks with:
+
+```bash
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
 ```
 
 ## License
 
-GNU General Public License v3.0 or later (GPL-3.0-or-later). See
-[LICENSE](LICENSE) for details. Third-party dependency notices and complete
-license texts are available in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt)
-and [`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/).
+Serper is licensed under the MIT License. [License text](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.txt)

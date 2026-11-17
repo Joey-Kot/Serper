@@ -1,16 +1,12 @@
 # Third-Party Notices
 
-The standalone Go CLI statically links the component below. Python runtime
-dependencies are declared in `pyproject.toml` and are not bundled into the
-CLI release archives.
+The Rust CLI depends on the crates recorded in Cargo.lock. Their license
+identifiers and source information are available via `cargo metadata --locked`.
+Release archives contain a generated THIRD_PARTY_NOTICES.txt and the license
+texts for the dependencies used to build the CLI on the supported platforms.
 
-## golang.org/x/text
+To generate those files locally, run:
 
-- Version: v0.22.0
-- Source: https://pkg.go.dev/golang.org/x/text
-- License: BSD-3-Clause
-- Full license text: `THIRD_PARTY_LICENSES/golang.org-x-text-BSD-3-Clause.txt`
+    scripts/bundle-licenses.sh <output-directory>
 
-## Project License
-
-- GPL-3.0-or-later
+The script requires Cargo, jq, and the dependency sources downloaded by Cargo.

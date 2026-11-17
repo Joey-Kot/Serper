@@ -1,7 +1,5 @@
-Serper Toolkit
-Copyright (C) 2026 Joey Kot <joey.kot.x@gmail.com>
+Serper
+Copyright (c) 2026 Joey Kot <joey.kot.x@gmail.com>
 
-This project is licensed under the GNU General Public License,
-version 3 or (at your option) any later version.
-
-See LICENSE for the full license text.
+This project is licensed under the MIT License. See LICENSE for the full text.
+Third-party dependencies have their own licenses; see THIRD_PARTY_NOTICES.txt.
