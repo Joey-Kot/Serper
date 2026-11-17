@@ -148,4 +148,4 @@ cargo test --locked
 
 ## 许可证
 
-本项目采用 MIT 许可证。 [许可证全文](LICENSE) · [第三方许可证声明](THIRD_PARTY_NOTICES.txt)
+本项目采用 MIT 许可证。 [许可证全文](LICENSE)

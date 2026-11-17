@@ -148,4 +148,4 @@ cargo test --locked
 
 ## License
 
-Serper is licensed under the MIT License. [License text](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.txt)
+Serper is licensed under the MIT License. [License text](LICENSE)

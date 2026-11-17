@@ -28,13 +28,6 @@ jobs:
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Run tests
         run: cargo test --locked
-      - name: Collect dependency license texts
-        run: scripts/bundle-licenses.sh license-bundle
-      - uses: actions/upload-artifact@v4
-        with:
-          name: license-bundle
-          path: license-bundle/
-          if-no-files-found: error
 
   build-cli:
     needs: test
@@ -92,14 +85,10 @@ jobs:
             echo "Executable has a dynamic loader or shared-library dependency" >&2
             exit 1
           fi
-      - uses: actions/download-artifact@v4
-        with:
-          name: license-bundle
-          path: staging
       - name: Prepare package
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist staging
           cp README.md README_ZH.md LICENSE NOTICE staging/
           binary=serper
           if [[ "${{ matrix.os }}" == windows ]]; then binary=serper.exe; fi
