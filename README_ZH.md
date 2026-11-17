@@ -46,7 +46,7 @@ Serper QPS     : 5
 
 ```bash
 serper aggregated --query "AI news" --search-num 20 --country US --language en --search-time day
-serper general --query "AI news" --search-num 10 --search-time week
+serper web --query "AI news" --search-num 10 --search-time week
 serper image --query "serper logo" --search-num 10
 serper video --query "web scraping tutorial"
 serper place --query "coffee" --location "Berlin,Germany"
@@ -88,7 +88,7 @@ serper scrape --output example --path ./exports --url "https://www.example.com" 
 | 命令 | 用途 |
 | --- | --- |
 | `aggregated` | 同时搜索网页、新闻和图片。 |
-| `general`、`image`、`video`、`news` | 搜索单一类型的结果。 |
+| `web`、`image`、`video`、`news` | 搜索单一类型的结果。 |
 | `place`、`maps`、`reviews` | 搜索地点、地图或评论。 |
 | `lens` | 使用公开图片 URL 搜索。 |
 | `scholar`、`shopping`、`patents` | 搜索学术文献、购物结果或专利。 |
@@ -101,7 +101,7 @@ serper scrape --output example --path ./exports --url "https://www.example.com" 
 | `--search-num N` | 搜索命令 | 请求的结果数量，为 `1`–`100`，按上述规则归一化。 |
 | `--country COUNTRY` | 除 `patents` 之外的搜索命令 | 国家名称或 ISO 代码，默认 `US`；无法识别的名称回退到 `US`。 |
 | `--language CODE` | 除 `patents` 之外的搜索命令 | 语言代码，例如 `en`。 |
-| `--search-time TIME` | `aggregated`、`general`、`image`、`video`、`news` | `hour`、`day`、`week`、`month` 或 `year`。 |
+| `--search-time TIME` | `aggregated`、`web`、`image`、`video`、`news` | `hour`、`day`、`week`、`month` 或 `year`。 |
 | `--location LOCATION` | `place` | 地点提示。 |
 | `--ll COORDINATES` | `maps` | 地图坐标；查询多页结果时必填。 |
 | `--place-id ID` | `maps`、`reviews` | Google Place ID。 |

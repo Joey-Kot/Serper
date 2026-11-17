@@ -19,7 +19,7 @@ struct Spec {
 
 const SPECS: &[Spec] = &[
     Spec {
-        name: "general",
+        name: "web",
         endpoint: "search",
         description: "Search the web",
         query: true,

@@ -157,7 +157,7 @@ fn credit_rejects_missing_or_non_numeric_fields_and_http_errors() {
 }
 
 #[test]
-fn general_paginates_deduplicates_and_maps_fields() {
+fn web_paginates_deduplicates_and_maps_fields() {
     let (url, receiver, handle) = mock_server(vec![
         reply(
             200,
@@ -171,7 +171,7 @@ fn general_paginates_deduplicates_and_maps_fields() {
     let (code, out, err) = invoke(
         &url,
         &[
-            "general",
+            "web",
             "--query",
             "ai",
             "--country",
@@ -329,7 +329,7 @@ fn scrape_rejects_dangling_symlink_before_network_request() {
 fn search_and_scrape_errors_are_visible_and_do_not_create_file() {
     let (url, receiver, handle) =
         mock_server(vec![(502, "text/html", "upstream gateway".to_owned())]);
-    let (code, out, _) = invoke(&url, &["general", "--query", "a"]);
+    let (code, out, _) = invoke(&url, &["web", "--query", "a"]);
     receiver.recv_timeout(Duration::from_secs(5)).unwrap();
     handle.join().unwrap();
     assert_eq!(code, 1);
@@ -366,9 +366,9 @@ fn search_and_scrape_errors_are_visible_and_do_not_create_file() {
 fn input_validation_happens_before_network_requests() {
     for args in [
         vec!["reviews"],
-        vec!["general", "--query", "test", "--timeout", "0"],
-        vec!["general", "--query", "test", "--search-num", "101"],
-        vec!["general", "--query", "test", "--search-time", "invalid"],
+        vec!["web", "--query", "test", "--timeout", "0"],
+        vec!["web", "--query", "test", "--search-num", "101"],
+        vec!["web", "--query", "test", "--search-time", "invalid"],
     ] {
         let (code, _, err) = invoke("http://127.0.0.1:1", &args);
         assert_eq!(code, 2, "{args:?} {err}");
@@ -602,7 +602,7 @@ fn scrape_default_requests_markdown_and_rejects_invalid_filename() {
 #[test]
 fn search_accepts_query_starting_with_hyphen() {
     let (url, receiver, handle) = mock_server(vec![reply(200, json!({"organic":[],"credits":1}))]);
-    let (code, _, err) = invoke(&url, &["general", "--query", "-term"]);
+    let (code, _, err) = invoke(&url, &["web", "--query", "-term"]);
     let request = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
     handle.join().unwrap();
     assert_eq!(code, 0, "{err}");

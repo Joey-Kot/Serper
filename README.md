@@ -46,7 +46,7 @@ The command reads `balance` and `rateLimit` from the account endpoint. The times
 
 ```bash
 serper aggregated --query "AI news" --search-num 20 --country US --language en --search-time day
-serper general --query "AI news" --search-num 10 --search-time week
+serper web --query "AI news" --search-num 10 --search-time week
 serper image --query "serper logo" --search-num 10
 serper video --query "web scraping tutorial"
 serper place --query "coffee" --location "Berlin,Germany"
@@ -88,7 +88,7 @@ page content
 | Command | Purpose |
 | --- | --- |
 | `aggregated` | Search the web, news, and images together. |
-| `general`, `image`, `video`, `news` | Search one result type. |
+| `web`, `image`, `video`, `news` | Search one result type. |
 | `place`, `maps`, `reviews` | Search places, maps, or reviews. |
 | `lens` | Search using a public image URL. |
 | `scholar`, `shopping`, `patents` | Search scholarly publications, shopping results, or patents. |
@@ -101,7 +101,7 @@ page content
 | `--search-num N` | Search commands | Results requested, from `1` to `100`; subject to the normalization above. |
 | `--country COUNTRY` | Search commands except `patents` | Country name or ISO code; defaults to `US`. Unrecognized names fall back to `US`. |
 | `--language CODE` | Search commands except `patents` | Language code, such as `en`. |
-| `--search-time TIME` | `aggregated`, `general`, `image`, `video`, `news` | `hour`, `day`, `week`, `month`, or `year`. |
+| `--search-time TIME` | `aggregated`, `web`, `image`, `video`, `news` | `hour`, `day`, `week`, `month`, or `year`. |
 | `--location LOCATION` | `place` | Location hint. |
 | `--ll COORDINATES` | `maps` | Map coordinates; required for multi-page query results. |
 | `--place-id ID` | `maps`, `reviews` | Google place ID. |
