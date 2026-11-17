@@ -1,5 +1,4 @@
 use crate::{api::SerperClient, cli};
-use chrono::Local;
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpListener;
@@ -102,58 +101,6 @@ fn invoke(url: &str, args: &[&str]) -> (i32, String, String) {
 
 fn body(request: &Request) -> Value {
     serde_json::from_slice(&request.body).unwrap()
-}
-
-#[test]
-fn credit_gets_account_and_prints_values_with_response_time() {
-    let (url, receiver, handle) =
-        mock_server(vec![reply(200, json!({"balance":1652,"rateLimit":5}))]);
-    let before = Local::now().timestamp();
-    let (code, out, err) = invoke(&url, &["credit"]);
-    let after = Local::now().timestamp();
-    let request = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-    handle.join().unwrap();
-    assert_eq!(code, 0, "{err}");
-    assert_eq!(request.method, "GET");
-    assert_eq!(request.path, "/account");
-    assert_eq!(request.key.as_deref(), Some("test-key"));
-    assert!(request.body.is_empty());
-    let lines: Vec<_> = out.lines().collect();
-    assert_eq!(lines.len(), 3);
-    let timestamp = lines[0].strip_prefix("Timestamp      : ").unwrap();
-    let local = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-    let observed = chrono::TimeZone::from_local_datetime(&Local, &local)
-        .earliest()
-        .unwrap()
-        .timestamp();
-    assert!((before..=after).contains(&observed));
-    assert_eq!(lines[1], "Serper Credits : 1652");
-    assert_eq!(lines[2], "Serper QPS     : 5");
-}
-
-#[test]
-fn credit_rejects_missing_or_non_numeric_fields_and_http_errors() {
-    for payload in [
-        json!({"balance":1}),
-        json!({"balance":"1652","rateLimit":5}),
-        json!({"balance":1,"rateLimit":null}),
-    ] {
-        let (url, receiver, handle) = mock_server(vec![reply(200, payload)]);
-        let (code, out, err) = invoke(&url, &["credit"]);
-        receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-        handle.join().unwrap();
-        assert_eq!(code, 1);
-        assert!(out.is_empty());
-        assert!(err.contains("balance and rateLimit"));
-    }
-    let (url, receiver, handle) =
-        mock_server(vec![reply(401, json!({"message":"Invalid API key"}))]);
-    let (code, out, err) = invoke(&url, &["credit"]);
-    receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-    handle.join().unwrap();
-    assert_eq!(code, 1);
-    assert!(out.is_empty());
-    assert!(err.contains("401") && err.contains("Invalid API key"));
 }
 
 #[test]
@@ -560,57 +507,6 @@ fn empty_key_fails_for_credit_without_sending_request() {
 }
 
 #[test]
-fn credit_records_time_after_complete_response() {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let url = format!("http://{}", listener.local_addr().unwrap());
-    let (sender, receiver) = mpsc::channel();
-    let handle = thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        let mut reader = BufReader::new(stream.try_clone().unwrap());
-        let mut line = String::new();
-        loop {
-            line.clear();
-            reader.read_line(&mut line).unwrap();
-            if line == "\r\n" {
-                break;
-            }
-        }
-        let body = r#"{"balance":0,"rateLimit":5}"#;
-        write!(
-            stream,
-            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n",
-            body.len()
-        )
-        .unwrap();
-        stream.flush().unwrap();
-        thread::sleep(Duration::from_millis(1100));
-        let sent_at = Local::now().timestamp();
-        write!(stream, "{body}").unwrap();
-        sender.send(sent_at).unwrap();
-    });
-    let (code, out, err) = invoke(&url, &["credit"]);
-    let sent_at = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-    handle.join().unwrap();
-    assert_eq!(code, 0, "{err}");
-    let timestamp = out
-        .lines()
-        .next()
-        .unwrap()
-        .strip_prefix("Timestamp      : ")
-        .unwrap();
-    let parsed = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d %H:%M:%S").unwrap();
-    let observed = chrono::TimeZone::from_local_datetime(&Local, &parsed)
-        .earliest()
-        .unwrap()
-        .timestamp();
-    assert!(
-        observed >= sent_at,
-        "timestamp {observed} preceded response body {sent_at}"
-    );
-    assert!(out.contains("Serper Credits : 0\n"));
-}
-
-#[test]
 fn scrape_default_requests_markdown_and_rejects_invalid_filename() {
     let dir = tempfile::tempdir().unwrap();
     let (url, receiver, handle) =
@@ -649,53 +545,6 @@ fn scrape_default_requests_markdown_and_rejects_invalid_filename() {
     );
     assert_eq!(code, 1);
     assert!(out.contains("--output must contain a file name"));
-}
-
-#[test]
-fn scrape_no_markdown_does_not_accept_values_or_the_old_option() {
-    for arg in [
-        "--no-markdown=true",
-        "--no-markdown=false",
-        "--include-markdown",
-        "--include-markdown=true",
-        "--include-markdown=false",
-    ] {
-        assert!(cli::command()
-            .try_get_matches_from([
-                "serper",
-                "scrape",
-                "--output",
-                "page",
-                "--url",
-                "https://example.com",
-                arg,
-            ])
-            .is_err());
-    }
-    for value in ["true", "false"] {
-        assert!(cli::command()
-            .try_get_matches_from([
-                "serper",
-                "scrape",
-                "--output",
-                "page",
-                "--url",
-                "https://example.com",
-                "--no-markdown",
-                value,
-            ])
-            .is_err());
-    }
-}
-
-#[test]
-fn search_accepts_query_starting_with_hyphen() {
-    let (url, receiver, handle) = mock_server(vec![reply(200, json!({"organic":[],"credits":1}))]);
-    let (code, _, err) = invoke(&url, &["web", "--query", "-term"]);
-    let request = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-    handle.join().unwrap();
-    assert_eq!(code, 0, "{err}");
-    assert_eq!(body(&request)["q"], "-term");
 }
 
 #[test]

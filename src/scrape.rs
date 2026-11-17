@@ -8,7 +8,7 @@ pub struct ScrapeOptions<'a> {
     pub output: &'a str,
     pub directory: &'a str,
     pub url: &'a str,
-    pub include_markdown: bool,
+    pub no_markdown: bool,
 }
 
 fn display(value: &Value) -> String {
@@ -95,7 +95,7 @@ pub fn run(client: &SerperClient, options: &ScrapeOptions<'_>) -> Result<(), Str
         Err(err) => return Err(err.to_string()),
     }
     let mut request = json!({"url": options.url});
-    if options.include_markdown {
+    if !options.no_markdown {
         request["includeMarkdown"] = json!(true);
     }
     let response = client

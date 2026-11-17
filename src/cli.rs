@@ -397,7 +397,7 @@ pub fn execute(
             output: &output,
             directory: &directory,
             url: &url,
-            include_markdown: !matches.get_flag("no-markdown"),
+            no_markdown: matches.get_flag("no-markdown"),
         };
         return match scrape::run(client, &options) {
             Ok(()) => {
