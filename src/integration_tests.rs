@@ -172,15 +172,15 @@ fn web_paginates_deduplicates_and_maps_fields() {
         &url,
         &[
             "web",
-            "--query",
+            "-q",
             "ai",
-            "--country",
+            "-c",
             "United Kingdom",
-            "--language",
+            "-l",
             "en",
-            "--search-num",
+            "-n",
             "15",
-            "--search-time",
+            "-t",
             "month",
         ],
     );
@@ -230,7 +230,7 @@ fn image_and_aggregated_search_use_endpoint_specific_pagination() {
         reply(200, json!({"news":[{"link":"news2"}],"credits":1})),
         reply(200, json!({"images":[{"link":"image1"}],"credits":2})),
     ]);
-    let (code, out, _) = invoke(&url, &["aggregated", "--query", "ai"]);
+    let (code, out, _) = invoke(&url, &["aggregated", "--query", "ai", "--search-num", "20"]);
     let requests: Vec<_> = (0..5)
         .map(|_| receiver.recv_timeout(Duration::from_secs(5)).unwrap())
         .collect();
@@ -254,6 +254,35 @@ fn image_and_aggregated_search_use_endpoint_specific_pagination() {
 }
 
 #[test]
+fn aggregated_defaults_to_ten_results_per_type() {
+    let (url, receiver, handle) = mock_server(vec![
+        reply(200, json!({"organic":[],"credits":1})),
+        reply(200, json!({"news":[],"credits":1})),
+        reply(200, json!({"images":[],"credits":1})),
+    ]);
+    let (code, out, err) = invoke(&url, &["aggregated", "--query", "ai"]);
+    let requests: Vec<_> = (0..3)
+        .map(|_| receiver.recv_timeout(Duration::from_secs(5)).unwrap())
+        .collect();
+    handle.join().unwrap();
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(
+        requests.iter().map(|r| r.path.as_str()).collect::<Vec<_>>(),
+        ["/search", "/news", "/images"]
+    );
+    assert_eq!(body(&requests[2])["num"], 10);
+    let result: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(result["meta"]["requested_search_num"], 10);
+    assert_eq!(result["meta"]["effective_web_search_num"], 10);
+    assert_eq!(result["meta"]["effective_news_search_num"], 10);
+    assert_eq!(result["meta"]["effective_image_search_num"], 10);
+    assert_eq!(
+        result["meta"]["pages_fetched"],
+        json!({"web":1, "news":1, "images":1})
+    );
+}
+
+#[test]
 fn scrape_writes_markdown_and_does_not_overwrite_existing_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("nested");
@@ -266,13 +295,13 @@ fn scrape_writes_markdown_and_does_not_overwrite_existing_file() {
         &url,
         &[
             "scrape",
-            "--output",
+            "-o",
             "page",
-            "--path",
+            "-p",
             path_str,
-            "--url",
+            "-u",
             "https://example.com",
-            "--include-markdown=false",
+            "--no-markdown",
         ],
     );
     let request = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
@@ -381,6 +410,29 @@ fn input_validation_happens_before_network_requests() {
     let value: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(value["status_code"], 400);
     assert!(value["message"].as_str().unwrap().contains("--ll"));
+}
+
+#[test]
+fn search_time_short_values_are_sent_as_the_expected_ranges() {
+    let cases = [
+        ("-t", "h", "qdr:h"),
+        ("--search-time", "d", "qdr:d"),
+        ("-t", "w", "qdr:w"),
+        ("--search-time", "m", "qdr:m"),
+        ("-t", "y", "qdr:y"),
+    ];
+    let replies = cases
+        .iter()
+        .map(|_| reply(200, json!({"organic":[],"credits":1})))
+        .collect();
+    let (url, receiver, handle) = mock_server(replies);
+    for (option, value, expected) in cases {
+        let (code, _, err) = invoke(&url, &["web", "-q", "test", option, value]);
+        let request = receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert_eq!(code, 0, "{err}");
+        assert_eq!(body(&request)["tbs"], expected);
+    }
+    handle.join().unwrap();
 }
 
 #[test]
@@ -597,6 +649,43 @@ fn scrape_default_requests_markdown_and_rejects_invalid_filename() {
     );
     assert_eq!(code, 1);
     assert!(out.contains("--output must contain a file name"));
+}
+
+#[test]
+fn scrape_no_markdown_does_not_accept_values_or_the_old_option() {
+    for arg in [
+        "--no-markdown=true",
+        "--no-markdown=false",
+        "--include-markdown",
+        "--include-markdown=true",
+        "--include-markdown=false",
+    ] {
+        assert!(cli::command()
+            .try_get_matches_from([
+                "serper",
+                "scrape",
+                "--output",
+                "page",
+                "--url",
+                "https://example.com",
+                arg,
+            ])
+            .is_err());
+    }
+    for value in ["true", "false"] {
+        assert!(cli::command()
+            .try_get_matches_from([
+                "serper",
+                "scrape",
+                "--output",
+                "page",
+                "--url",
+                "https://example.com",
+                "--no-markdown",
+                value,
+            ])
+            .is_err());
+    }
 }
 
 #[test]

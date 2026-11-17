@@ -88,19 +88,40 @@ jobs:
       - name: Prepare package
         shell: bash
         run: |
-          mkdir -p dist staging
-          cp README.md README_ZH.md LICENSE NOTICE staging/
+          package="serper_${{ matrix.os }}_${{ matrix.arch }}"
+          mkdir -p dist "staging/$package"
+          cp README.md README_ZH.md LICENSE NOTICE "staging/$package/"
           binary=serper
           if [[ "${{ matrix.os }}" == windows ]]; then binary=serper.exe; fi
-          cp "target/${{ matrix.target }}/release/$binary" "staging/$binary"
+          cp "target/${{ matrix.target }}/release/$binary" "staging/$package/$binary"
       - name: Package Unix CLI
         if: matrix.os != 'windows'
         shell: bash
-        run: tar -C staging -czf "dist/serper_${{ matrix.os }}_${{ matrix.arch }}.tar.gz" .
+        run: tar -C staging -czf "dist/serper_${{ matrix.os }}_${{ matrix.arch }}.tar.gz" "serper_${{ matrix.os }}_${{ matrix.arch }}"
       - name: Package Windows CLI
         if: matrix.os == 'windows'
         shell: pwsh
-        run: Compress-Archive -Path staging/* -DestinationPath dist/serper_${{ matrix.os }}_${{ matrix.arch }}.zip
+        run: Compress-Archive -LiteralPath staging/serper_${{ matrix.os }}_${{ matrix.arch }} -DestinationPath dist/serper_${{ matrix.os }}_${{ matrix.arch }}.zip
+      - name: Verify package layout
+        shell: pwsh
+        run: |
+          $package = 'serper_${{ matrix.os }}_${{ matrix.arch }}'
+          if ('${{ matrix.os }}' -eq 'windows') {
+            $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $PWD "dist/$package.zip"))
+            try { $entries = @($archive.Entries | ForEach-Object { $_.FullName }) }
+            finally { $archive.Dispose() }
+            $binary = 'serper.exe'
+          } else {
+            $entries = @(tar -tzf "dist/$package.tar.gz")
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to list archive contents' }
+            $binary = 'serper'
+          }
+          if (@($entries | Where-Object { -not $_.StartsWith("$package/") }).Count -ne 0) {
+            throw 'Archive contains files outside the package directory'
+          }
+          foreach ($file in @('README.md', 'README_ZH.md', 'LICENSE', 'NOTICE', $binary)) {
+            if ($entries -notcontains "$package/$file") { throw "Archive is missing $file" }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: serper-${{ matrix.os }}-${{ matrix.arch }}

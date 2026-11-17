@@ -8,6 +8,10 @@ use api::SerperClient;
 use std::io::{self, Write};
 
 fn main() {
+    clap_complete::CompleteEnv::with_factory(cli::command)
+        .var("SERPER_COMPLETE")
+        .complete();
+
     let matches = match cli::command().try_get_matches() {
         Ok(matches) => matches,
         Err(error) => {
@@ -17,6 +21,33 @@ fn main() {
         }
     };
     let (name, args) = matches.subcommand().expect("subcommand is required");
+    if name == "completion" {
+        let shell = *args
+            .get_one::<clap_complete::Shell>("shell")
+            .expect("shell is required");
+        let mut stdout = io::stdout().lock();
+        match shell {
+            clap_complete::Shell::PowerShell => stdout
+                .write_all(include_bytes!("completion.ps1"))
+                .expect("failed to write completion script"),
+            clap_complete::Shell::Fish | clap_complete::Shell::Elvish => {
+                let shells = clap_complete::env::Shells::builtins();
+                shells
+                    .completer(&shell.to_string())
+                    .expect("supported shell")
+                    .write_registration(
+                        "SERPER_COMPLETE",
+                        "serper",
+                        "serper",
+                        "serper",
+                        &mut stdout,
+                    )
+                    .expect("failed to write completion script");
+            }
+            _ => clap_complete::generate(shell, &mut cli::command(), "serper", &mut stdout),
+        }
+        return;
+    }
     let timeout = match cli::timeout(args) {
         Ok(timeout) => timeout,
         Err(message) => {

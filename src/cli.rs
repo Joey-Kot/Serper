@@ -1,11 +1,40 @@
 use crate::api::SerperClient;
 use crate::scrape::{self, ScrapeOptions};
 use crate::search::{self, SearchOptions};
-use clap::{Arg, ArgMatches, Command};
+use clap::builder::{PossibleValue, StringValueParser, TypedValueParser};
+use clap::{Arg, ArgAction, ArgMatches, Command, ValueHint};
+use clap_complete::Shell;
+use std::ffi::OsStr;
 use std::io::Write;
 
 const DEFAULT_TIMEOUT: &str = "120";
 const MAX_TIMEOUT: i64 = 9_223_372_036;
+
+#[derive(Clone)]
+struct SearchTimeParser;
+
+impl TypedValueParser for SearchTimeParser {
+    type Value = String;
+
+    fn parse_ref(
+        &self,
+        command: &Command,
+        arg: Option<&Arg>,
+        value: &OsStr,
+    ) -> Result<Self::Value, clap::Error> {
+        StringValueParser::new().parse_ref(command, arg, value)
+    }
+
+    fn possible_values(&self) -> Option<Box<dyn Iterator<Item = PossibleValue> + '_>> {
+        Some(Box::new(
+            [
+                "hour", "h", "day", "d", "week", "w", "month", "m", "year", "y",
+            ]
+            .into_iter()
+            .map(PossibleValue::new),
+        ))
+    }
+}
 
 struct Spec {
     name: &'static str,
@@ -155,19 +184,28 @@ fn common_search(
     let mut result = command
         .arg(
             option("search-num", "Number of results (1-100)")
+                .short('n')
                 .default_value(default_num)
                 .allow_hyphen_values(true),
         )
         .arg(timeout_arg());
     if query {
-        result = result.arg(option("query", "Search keywords").required(true));
+        result = result.arg(option("query", "Search keywords").short('q').required(true));
     }
     if country {
-        result = result.arg(option("country", "Country name or ISO code (default: US)"));
-        result = result.arg(option("language", "Language code, such as en"));
+        result = result.arg(option("country", "Country name or ISO code (default: US)").short('c'));
+        result = result.arg(option("language", "Language code, such as en").short('l'));
     }
     if time {
-        result = result.arg(option("search-time", "hour, day, week, month, or year"));
+        result = result.arg(
+            option(
+                "search-time",
+                "hour (h), day (d), week (w), month (m), or year (y)",
+            )
+            .short('t')
+            .value_parser(SearchTimeParser)
+            .hide_possible_values(true),
+        );
     }
     result
 }
@@ -181,7 +219,7 @@ pub fn command() -> Command {
         .arg_required_else_help(true);
     root = root.subcommand(common_search(
         Command::new("aggregated").about("Search the web, news, and images"),
-        "20",
+        "10",
         true,
         true,
         true,
@@ -207,25 +245,40 @@ pub fn command() -> Command {
     root = root.subcommand(
         Command::new("scrape")
             .about("Scrape a page to a Markdown file")
-            .arg(option("output", "Output file name").required(true))
-            .arg(option("path", "Output directory").default_value("."))
-            .arg(option("url", "URL to scrape").required(true))
             .arg(
-                Arg::new("include-markdown")
-                    .long("include-markdown")
-                    .help("Request Markdown (true or false)")
-                    .num_args(0..=1)
-                    .require_equals(true)
-                    .default_missing_value("true")
-                    .default_value("true")
-                    .value_parser(["true", "false"]),
+                option("output", "Output file name")
+                    .short('o')
+                    .required(true),
+            )
+            .arg(
+                option("path", "Output directory")
+                    .short('p')
+                    .value_hint(ValueHint::DirPath)
+                    .default_value("."),
+            )
+            .arg(option("url", "URL to scrape").short('u').required(true))
+            .arg(
+                Arg::new("no-markdown")
+                    .long("no-markdown")
+                    .help("Do not request Markdown")
+                    .action(ArgAction::SetTrue),
             )
             .arg(timeout_arg()),
     );
-    root.subcommand(
+    root = root.subcommand(
         Command::new("credit")
             .about("Show remaining credits and QPS")
             .arg(timeout_arg()),
+    );
+    root.subcommand(
+        Command::new("completion")
+            .about("Generate shell completion script")
+            .arg(
+                Arg::new("shell")
+                    .help("Shell to generate completions for")
+                    .required(true)
+                    .value_parser(clap::value_parser!(Shell)),
+            ),
     )
 }
 
@@ -344,7 +397,7 @@ pub fn execute(
             output: &output,
             directory: &directory,
             url: &url,
-            include_markdown: get(matches, "include-markdown") == "true",
+            include_markdown: !matches.get_flag("no-markdown"),
         };
         return match scrape::run(client, &options) {
             Ok(()) => {

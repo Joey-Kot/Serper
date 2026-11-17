@@ -27,7 +27,9 @@ pub fn search_time(value: &str) -> Result<&'static str, &'static str> {
         "week" | "w" | "qdr:w" => Ok("qdr:w"),
         "month" | "m" | "qdr:m" => Ok("qdr:m"),
         "year" | "y" | "qdr:y" => Ok("qdr:y"),
-        _ => Err("--search-time must be one of \"hour\", \"day\", \"week\", \"month\", \"year\""),
+        _ => {
+            Err("--search-time must be one of hour (h), day (d), week (w), month (m), or year (y)")
+        }
     }
 }
 

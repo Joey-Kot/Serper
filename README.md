@@ -19,7 +19,7 @@ Serper is a Rust command-line client for the Serper API. It searches the web, im
 
 ### API key
 
-Extract the archive and place `serper` on your `PATH`, or run it from the extracted directory. On Windows, the executable is `serper.exe`. Set `SERPER_KEY` to your Serper API key before making requests.
+Extract the archive and place `serper` from the extracted `serper_<os>_<arch>` directory on your `PATH`, or run it from that directory. On Windows, the executable is `serper.exe`. Set `SERPER_KEY` to your Serper API key before making requests.
 
 ```bash
 export SERPER_KEY="<your-serper-api-key>"
@@ -27,6 +27,35 @@ serper --help
 ```
 
 In PowerShell, use `$env:SERPER_KEY = "<your-serper-api-key>"`.
+
+### Shell completion
+
+Add the line for your shell to its startup file, then start a new shell. The `serper` executable must be on your `PATH`.
+
+```bash
+# Bash (~/.bashrc)
+eval "$(serper completion bash)"
+
+# Zsh (~/.zshrc, after compinit)
+eval "$(serper completion zsh)"
+```
+
+If Zsh completion has not been initialized, add `autoload -Uz compinit && compinit` before the Zsh line.
+
+```fish
+# Fish (~/.config/fish/config.fish)
+serper completion fish | source
+```
+
+```powershell
+# PowerShell ($PROFILE)
+serper completion powershell | Out-String | Invoke-Expression
+```
+
+```elvish
+# Elvish (~/.elvish/rc.elv)
+eval (serper completion elvish | slurp)
+```
 
 ### Credits and rate limit
 
@@ -36,8 +65,8 @@ serper credit
 
 ```text
 Timestamp      : 2026-11-17 10:00:00
-Serper Credits : 1652
-Serper QPS     : 5
+Serper Credits : 16520
+Serper QPS     : 100
 ```
 
 The command reads `balance` and `rateLimit` from the account endpoint. The timestamp is the local system time when the response has been received. Errors go to stderr and return a nonzero exit status. Use `--timeout` to set the request timeout in seconds.
@@ -46,6 +75,7 @@ The command reads `balance` and `rateLimit` from the account endpoint. The times
 
 ```bash
 serper aggregated --query "AI news" --search-num 20 --country US --language en --search-time day
+serper web -q "AI news" -n 10 -c US -l en -t w
 serper web --query "AI news" --search-num 10 --search-time week
 serper image --query "serper logo" --search-num 10
 serper video --query "web scraping tutorial"
@@ -61,16 +91,17 @@ serper patents --query "battery management"
 
 Search commands print compact, single-line JSON. Successful responses contain `success`, `meta`, `data`, and `credits`; request failures print a JSON error on stdout and return a nonzero status. `aggregated` combines web, news, and image results.
 
-`--search-num` accepts `1`–`100`. It defaults to `20` for `aggregated` and `10` for other search commands. Non-image searches round up to the next multiple of 10 and fetch pages automatically; image searches request either 10 or 100 results in one request. Results are deduplicated as pages are merged. For maps queries fetching more than one page, provide `--ll`.
+`--search-num` accepts `1`–`100` and defaults to `10` for all search commands. Non-image searches round up to the next multiple of 10 and fetch pages automatically; image searches request either 10 or 100 results in one request. Results are deduplicated as pages are merged. For maps queries fetching more than one page, provide `--ll`.
 
 ### Scrape pages
 
 ```bash
 serper scrape --output example --url "https://www.example.com"
+serper scrape -o example -p ./exports -u "https://www.example.com"
 serper scrape --output example --path ./exports --url "https://www.example.com" --timeout 120
 ```
 
-The command creates the output directory if needed and writes `<output>.md` after a successful request. It prints `true` on success. On failure it prints `false` followed by the reason and exits with a nonzero status. Existing files and symlinks are not overwritten. Markdown is requested by default; set `--include-markdown=false` to disable it.
+The command creates the output directory if needed and writes `<output>.md` after a successful request. It prints `true` on success. On failure it prints `false` followed by the reason and exits with a nonzero status. Existing files and symlinks are not overwritten. Markdown is requested by default; use `--no-markdown` to disable it.
 
 ```markdown
 ## title: ...
@@ -94,14 +125,15 @@ page content
 | `scholar`, `shopping`, `patents` | Search scholarly publications, shopping results, or patents. |
 | `scrape` | Save a page as Markdown. |
 | `credit` | Show remaining credits and the account QPS. |
+| `completion` | Generate a shell completion script. |
 
 | Option | Applies to | Usage |
 | --- | --- | --- |
-| `--query TEXT` | Search commands except `reviews` and `lens` | Search keywords; required for these commands. |
-| `--search-num N` | Search commands | Results requested, from `1` to `100`; subject to the normalization above. |
-| `--country COUNTRY` | Search commands except `patents` | Country name or ISO code; defaults to `US`. Unrecognized names fall back to `US`. |
-| `--language CODE` | Search commands except `patents` | Language code, such as `en`. |
-| `--search-time TIME` | `aggregated`, `web`, `image`, `video`, `news` | `hour`, `day`, `week`, `month`, or `year`. |
+| `-q, --query TEXT` | Search commands except `reviews` and `lens` | Search keywords; required for these commands. |
+| `-n, --search-num N` | Search commands | Results requested, from `1` to `100`; subject to the normalization above. |
+| `-c, --country COUNTRY` | Search commands except `patents` | Country name or ISO code; defaults to `US`. Unrecognized names fall back to `US`. |
+| `-l, --language CODE` | Search commands except `patents` | Language code, such as `en`. |
+| `-t, --search-time TIME` | `aggregated`, `web`, `image`, `video`, `news` | `hour` (`h`), `day` (`d`), `week` (`w`), `month` (`m`), or `year` (`y`). |
 | `--location LOCATION` | `place` | Location hint. |
 | `--ll COORDINATES` | `maps` | Map coordinates; required for multi-page query results. |
 | `--place-id ID` | `maps`, `reviews` | Google place ID. |
@@ -109,10 +141,10 @@ page content
 | `--fid FID` | `reviews` | Google FID. |
 | `--sort-by ORDER` | `reviews` | Review sort option, such as `newest`. |
 | `--image-url URL` | `lens` | Public image URL; required. |
-| `--output NAME` | `scrape` | Output file name; required. The `.md` extension is added if absent. |
-| `--path DIR` | `scrape` | Output directory; defaults to the current directory. |
-| `--url URL` | `scrape` | Page URL; required. |
-| `--include-markdown[=true\|false]` | `scrape` | Request Markdown; defaults to `true`. |
+| `-o, --output NAME` | `scrape` | Output file name; required. The `.md` extension is added if absent. |
+| `-p, --path DIR` | `scrape` | Output directory; defaults to the current directory. |
+| `-u, --url URL` | `scrape` | Page URL; required. |
+| `--no-markdown` | `scrape` | Do not request Markdown. |
 | `--timeout SECONDS` | All commands | Timeout per request; a positive integer, default `120`. |
 | `--help` | All commands | Show help for a command. |
 
